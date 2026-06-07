@@ -1,46 +1,42 @@
-Autor: Piotr Chrabąszcz
-Część obowiązkowa:
-1.Opis:
-aplikacja została napisana w Node.js i uruchamiana w kontenerze Docker
+#Zadanie 2
+## Struktura repozytorium
+.github/workflows/docker-build.yml #plik z GHActions
+Dockerfile, server.js, public/index.html,package.json # pliki z zadania1
 
-Funkcjonalność:
--logi startowe
--sprawdzanie pogody dla miast z listy(temperatura, odczuwalna, wilgotność, wiatr i opady). Przy wyborze miasta idzie request do API geocoding, pobierane są współrzędne i pogoda dla współrzędnych, co jest wyświetlane w przeglądarce
+## Opis docker-build.yml
 
-2.Dockerfile
--build wieloetapowy
--obraz bazowy node:20-alpine
--instalacja zależności
--healtcheck
--uruchamianie z minimalnymi uprawnieniami
--etykieta według standardu OCI
+# Wyzwalacze
+Workflow uruchamia się przy każdym push na branch `main` oraz ręcznie (`workflow_dispatch`).
 
-3.Pliki
--server.js - plik Node z serwerem używanym w kontenerze
--package.json - plik konfiguracyjny do node
--public/index.html - strona, którą ustawia serwer
--Dockerfile - tak jak opisane wcześniej
--plik .pdf - zrzuty ekranu potwierdzające wykonanie zadania
+# Kroki
+1. Checkout - pobranie kodu z repo
+2. konfiguracja QEMU - emulacja arm64
+3. konfiguracja build — konfiguracja wieloplatformowego buildera.
+4. logowanie do ghcr — uwierzytelnienie przez GITHUB_TOKEN(secret buildkit)
+5. logowanie do dockerhuba — uwierzytelnienie dh potrzebne dla cache
+6. metadane — generowanie tagów obrazu (rozpisane dokładniej później)
+7. build lokalny — budowa obrazu dla linux/amd64 z cache, wynik zapisywany lokalnie, potrzebne do CVE
+8. Trivy — skanowanie obrazu; jeśli wykryto critical/high dalsze kroki nie są wykonywane
+9. push do ghcr — obraz jest budowany ponownie(dla obu architektur) i wypychany z właściwymi tagami.
 
 
-Polecenia: 
-a. zbudowanie obrazu kontenera
-docker build -f Dockerfile -t zadanie1:1.0 .
-b. uruchmienie kontenera
-docker run -p 3000:3000 zadanie1:1.0
-c. logi
-docker logs id_kontenera
-uzyskanie id pod docker ps
-d.sprawdzenie ilości warstw
-docker history zadanie1:v1.0
-i policzenie warstw z rozmiarem większym od 0
+## Tagowanie obrazów
+# Tagi
+Obraz w `ghcr.io` otrzymuje tagi tworzone przez przez metadata-action
+sha-<short_sha> np. sha-a1b2c3d - unikalny, identyfikuje dany commit 
+latest - wskazuje na ostatni build z main
 
-Część nieobowiązkowa 3. (max. +80%) (rozszerzenie do poprzedniej części):
--11 luk w zabezpieczeniach na poziomie HIGH znalezionych w zabezpieczeniach, ale nie mają one znaczenia w tej aplikacji(opisane dokładniej w pliku pdf)
--aplikacja wykorzystuje rozszerzony frontend BuildKit(deklaracja na początku Dockerfile)
--w celu multiplatformowego budowania stworzyłem builder(polecenie: docker buildx create --use --name my_builder --driver docker-container)
+# Uzasadnienie
+Tag oparty na skrócie SHA  jest jednoznaczny, identyfikuje konkretną wersję  obrazu umożliwiając rollback do dowolnej poprzedniej wersji.
+(https://github.com/docker/metadata-action#tags-input)
 
--kod źródłowy nie jest już kopiowany z lokalnego dysku tylko z repozytorium github używając mount secret
--Access token został przekazany z pliku znajdującego się poza kontekstem(folderem) budowania
--Budowanie obrazu dla amd64 i arm64 oraz wysłanie cache(tryb max) bezpośrednio do Dockerhub zostało zrealizowane poleceniem:
-docker buildx build --platform linux/amd64,linux/arm64 --secret id=github_token,src=C:\PAWCHO\token.txt -t chrabaszcz/zadanie1nob:v1.0 --cache-to=type=registry,ref=chrabaszcz/zadanie1nob:cache,mode=max --cache-from=type=registry,ref=chrabaszcz/zadanie1nob:cache --push .
+Tag :latest umożliwia pobranie najnowszej wersji bez znajomości SHA
+Połączenie obu tagów jest opisane w tym samym linku co wcześniej
+
+## Tagowanie cache na DockerHub
+Cache przechowywany jest w  publicznym repozytorium pod stałym tagiem `:cache`.
+
+# Uzasadnienie
+Użycie stałego tagu :cache dla danych cache jest podejściem opisanym w dokumentacji Buildkit. Cache nie ma wersji,  jego zadaniem jest przyspieszenie kolejnych buildów, a nie rollback wersji. 
+(https://docs.docker.com/build/cache/backends/registry/)
+
