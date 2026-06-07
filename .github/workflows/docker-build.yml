@@ -74,7 +74,7 @@ jobs:
       # 8. Skan CVE 
       - name: Trivy vulnerability scan
         id: trivy
-        uses: aquasecurity/trivy-action@0.71.0
+        uses: aquasecurity/trivy-action@v0.71.0
         with:
           image-ref: "${{ env.GHCR_IMAGE }}:scan"
           format: "table"
