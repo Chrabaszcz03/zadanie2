@@ -18,15 +18,15 @@ jobs:
       security-events: write
 
     steps:
-      # 1. Pobranie kodu źródłowego
+      # 1. Pobranie kodu 
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 2. Konfiguracja QEMU (emulacja arm64)
+      # 2. Konfiguracja QEMU 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
-      # 3. Konfiguracja Buildx (multi-platform builder)
+      # 3. Konfiguracja Buildx
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -38,7 +38,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # 5. Logowanie do DockerHub (dla cache)
+      # 5. Logowanie do DockerHub
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
@@ -46,7 +46,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # 6. Generowanie metadanych / tagów obrazu
+      # 6. Generowanie  tagów 
       - name: Docker metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -56,12 +56,7 @@ jobs:
             type=sha,prefix=sha-,format=short
             type=raw,value=latest,enable={{is_default_branch}}
 
-      # 7. Build tylko dla amd64 — wynik zapisywany lokalnie (load: true)
-      #    żeby Trivy mógł przeskanować obraz przed pushem.
-      #    load: true nie obsługuje wielu platform jednocześnie, dlatego
-      #    tutaj budujemy tylko linux/amd64 (platforma runnera).
-      #    Obraz bazowy node:20-alpine ma identyczne zależności systemowe
-      #    na obu architekturach, więc skan amd64 jest reprezentatywny.
+      # 7. Build tylko dla amd64, wynik zapisywany lokalnie do skanu
       - name: Build image (local export for scanning)
         uses: docker/build-push-action@v6
         with:
@@ -76,10 +71,10 @@ jobs:
           secrets: |
             github_token=${{ secrets.GH_PAT }}
 
-      # 8. Skan CVE — Trivy (szybszy niż Docker Scout, nie wymaga logowania)
+      # 8. Skan CVE 
       - name: Trivy vulnerability scan
         id: trivy
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           image-ref: "${{ env.GHCR_IMAGE }}:scan"
           format: "table"
@@ -88,7 +83,7 @@ jobs:
           vuln-type: "os,library"
           severity: "CRITICAL,HIGH"
 
-      # 9. Push do GHCR — tylko gdy Trivy nie wykrył krytycznych / wysokich CVE
+      # 9. Push do GHCR
       - name: Push to GHCR
         if: success()
         uses: docker/build-push-action@v6
