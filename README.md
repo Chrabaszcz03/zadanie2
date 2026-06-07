@@ -2,6 +2,7 @@
 ## Struktura repozytorium
 .github/workflows/docker-build.yml #plik z GHActions
 Dockerfile, server.js, public/index.html,package.json # pliki z zadania1
+Pozostałe pliku pochodzą z zadania1, zostawiam w razie gdyby było potrzebne do sprawdzenia
 
 ## Opis docker-build.yml
 
@@ -16,7 +17,7 @@ Workflow uruchamia się przy każdym push na branch `main` oraz ręcznie (`workf
 5. logowanie do dockerhuba — uwierzytelnienie dh potrzebne dla cache
 6. metadane — generowanie tagów obrazu (rozpisane dokładniej później)
 7. build lokalny — budowa obrazu dla linux/amd64 z cache, wynik zapisywany lokalnie, potrzebne do CVE
-8. Trivy — skanowanie obrazu; jeśli wykryto critical/high dalsze kroki nie są wykonywane
+8. Trivy — skanowanie obrazu; jeśli wykryto critical/high dalsze kroki nie są wykonywane(Pod koniec wyjaśnione czemu severity:HIGH nie blokuje)
 9. push do ghcr — obraz jest budowany ponownie(dla obu architektur) i wypychany z właściwymi tagami.
 
 
@@ -40,3 +41,7 @@ Cache przechowywany jest w  publicznym repozytorium pod stałym tagiem `:cache`.
 Użycie stałego tagu :cache dla danych cache jest podejściem opisanym w dokumentacji Buildkit. Cache nie ma wersji,  jego zadaniem jest przyspieszenie kolejnych buildów, a nie rollback wersji. 
 (https://docs.docker.com/build/cache/backends/registry/)
 
+## Objaśnienia do Trivy
+Obraz bazowy(node:20-alpine) zawiera podatności HIGH, dla których nie ma jeszcze poprawki
+ignore-unfixed:true powinno w teorii takie przypadki pomijać, ale z jakiegoś powodu nie działa
+Dodatkowo te zagrożenia nie trafiają do końcowego builda
